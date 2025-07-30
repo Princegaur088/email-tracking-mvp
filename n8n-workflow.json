@@ -1,0 +1,150 @@
+{
+  "name": "Email Tracking Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "email-tracking-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.email }}",
+              "operation": "notEmpty"
+            }
+          ]
+        }
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "generateId": "uuid",
+        "additionalFields": {
+          "email_id": "={{ $json.email }}"
+        }
+      },
+      "id": "generate-email-id",
+      "name": "Generate Email ID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "your-email@yourdomain.com",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ $json.subject || 'Test Email with Tracking' }}",
+        "messageType": "html",
+        "message": "<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Email with Tracking</title>\n</head>\n<body>\n    <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n        <h1 style=\"color: #333;\">{{ $json.title || 'Hello!' }}</h1>\n        <p style=\"color: #666; line-height: 1.6;\">{{ $json.message || 'This email contains a tracking pixel to monitor when it is opened.' }}</p>\n        <div style=\"margin: 30px 0;\">\n            <a href=\"{{ $json.cta_url || '#' }}\" style=\"background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;\">{{ $json.cta_text || 'Click Here' }}</a>\n        </div>\n        <p style=\"color: #999; font-size: 12px;\">This email was sent with tracking enabled.</p>\n    </div>\n    <!-- Tracking Pixel -->\n    <img src=\"http://localhost:3000/track/{{ $('Generate Email ID').item.json.email_id }}\" width=\"1\" height=\"1\" style=\"display: none;\" alt=\"\" />\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Email sent successfully\",\n  \"email_id\": \"{{ $('Generate Email ID').item.json.email_id }}\",\n  \"tracking_url\": \"http://localhost:3000/track/{{ $('Generate Email ID').item.json.email_id }}\"\n}"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 400,
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"Email address is required\"\n}"
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Email ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Email ID": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "email-tracking-workflow",
+  "tags": []
+} 
